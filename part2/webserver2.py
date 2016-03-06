@@ -1,28 +1,29 @@
 import socket
 import StringIO
 import sys
+#import pdb
 
 class WSGIServer(object):
 
-	address_family = socket_AF_INET
-	socket_type = socket_SOCK_STREAM
+	address_family = socket.AF_INET
+	socket_type = socket.SOCK_STREAM
 	request_queue_size = 1
 
 	def __init__(self, server_address):
 		# Create a listening socket
-		self.lsiten_socket = listen_socket = scoket.socket(
+		self.listen_socket = listen_socket = socket.socket(
 			self.address_family,
 			self.socket_type
 		)
 		# Allow to reuse the same address
-		lsiten_socket.setsocketopt(socket.SOL_SOCKET, socket.SO_REUSEADDR)
+		listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		# BIND
-		lsiten_socket.bind(server_address)
+		listen_socket.bind(server_address)
 		# Activate
 		listen_socket.listen(self.request_queue_size)
 		# Get server host name and port
 		host, port = self.listen_socket.getsockname()[:2]
-		self.server_name = socket.getqdn(host)
+		self.server_name = socket.getfqdn(host)
 		self.server_port = port
 		# Return headers set by Web framework/Web application
 		self.headers_set = []
@@ -43,7 +44,7 @@ class WSGIServer(object):
 		self.request_data = request_data = self.client_connection.recv(1024)
 		# Print fomatted request data a la 'curl -v'
 		print(''.join(
-			'< {line}n'.formate(line=line)
+			'< {line}\n'.format(line=line)
 			for line in request_data.splitlines()
 		))
 
@@ -68,7 +69,7 @@ class WSGIServer(object):
 		 self.request_version	#HTTP/1.1		
 		) = request_line.split()
 
-	def get_environ():
+	def get_environ(self):
 		env = {}
 		env['wsgi.version']		= (1, 0)
 		env['wsgi.url_scheme']   = 'http'
@@ -78,39 +79,40 @@ class WSGIServer(object):
 		env['wsgi.multiprocess'] = False
 		env['wsgi.run_once']     = False
 	    # Required CGI variables
-    	env['REQUEST_METHOD']    = self.request_method    # GET
-    	env['PATH_INFO']         = self.path              # /hello
-    	env['SERVER_NAME']       = self.server_name       # localhost
-    	env['SERVER_PORT']       = str(self.server_port)  # 8888
-    	return env
+		env['REQUEST_METHOD']    = self.request_method    # GET
+		env['PATH_INFO']         = self.path              # /hello
+		env['SERVER_NAME']       = self.server_name       # localhost
+		env['SERVER_PORT']       = str(self.server_port)  # 8888
+		return env
 
-    def start_response(self, status, response_headers, exc_info=Noe):
+	def start_response(self, status, response_headers, exc_info=None):
     	# Add necessary server headers
-    	server_headers = [
-    		('Date', 'Sat, 5 Mar 2016 23:45:48 GMT'),
+		server_headers = [
+			('Date', 'Sat, 5 Mar 2016 23:45:48 GMT'),
     		('Server', 'WSGIServer 0.2'),
-    	]
-    	self.headers_set = [status, response_headers + server_headers]
+		]
+		self.headers_set = [status, response_headers + server_headers]
 
-    def finish_response(self, result):
-    	try:
-    		status, response_headers = self.headers_set
-    		response = 'HTTP/1.1 {status}rn'.format(status=status)
-    		for header in response_headers:
-    			response += '{0}: {1}\r\n'.format(*header)
-    		response += '\r\n'
-    		for data in result:
-    			response += data
-    		# Print formatted response data a la 'curl -v'
-    		print(''.join(
-				'> {line}\n'.formate(line=line)
+	def finish_response(self, result):
+		try:
+			status, response_headers = self.headers_set
+			response = 'HTTP/1.1 {status}\r\n'.format(status=status)
+			for header in response_headers:
+				response += '{0}: {1}\r\n'.format(*header)
+			response += '\r\n'
+			for data in result:
+				response += data
+			# Print formatted response data a la 'curl -v'
+			print(''.join(
+				'> {line}\n'.format(line=line)
 				for line in response.splitlines()
 			))
 			self.client_connection.sendall(response)
 		finally:
 			self.client_connection.close()
 
-SERVER_ADDRESS = (HOST, PORT) = '', 8888
+
+SERVER_ADDRESS = (HOST, PORT) = '', 28888
 
 def make_server(server_address, application):
 	server = WSGIServer(server_address)
@@ -122,6 +124,7 @@ if __name__ == '__main__':
 		sys.exit('Provide a WSGI application object as module:callable')
 	app_path = sys.argv[1]
 	module, application = app_path.split(':')
+	# pdb.set_trace() 
 	module = __import__(module)
 	application = getattr(module, application)
 	httpd = make_server(SERVER_ADDRESS, application)
